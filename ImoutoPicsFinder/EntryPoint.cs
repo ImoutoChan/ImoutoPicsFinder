@@ -1,5 +1,9 @@
 ﻿using System;
+using System.IO;
+using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
+using ImoutoPicsFinder.TikTok;
 using IqdbApi;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
@@ -38,6 +42,12 @@ public static class EntryPoint
             return;
         }
         
+        if (update.Message?.Text?.Contains("tiktok.com") == true)
+        {
+            await DownloadTikTokAsync(client, update.Message);
+            return;
+        }
+        
         if (update.Message == null
             ||update.Type != UpdateType.Message
             || update.Message?.Photo == null
@@ -59,7 +69,43 @@ public static class EntryPoint
                 replyToMessageId: update.Message.MessageId);
         }
     }
-    
+
+    private static async Task DownloadTikTokAsync(TelegramBotClient client, Message message)
+    {
+        try
+        {
+            var url = message.Text?.Split(" ").First(x => x.Contains("tiktok.com")) ?? "";
+            var tikTokData = await new TikTokDownloader().GetContentFromTikTokAsync(url);
+
+            if (tikTokData == null || !tikTokData.VideoList.Any())
+            {
+                await client.SendTextMessageAsync(
+                    message.Chat.Id,
+                    "Oops! Can't process your video, please try again uwu 🍑",
+                    replyToMessageId: message.MessageId);
+                return;
+            }
+            
+            foreach (var video in tikTokData.VideoList)
+            {
+                await using var mp4BytesStream = await new HttpClient().GetStreamAsync(video.Url);
+
+                await client.SendVideoAsync(
+                    message.Chat.Id,
+                    new InputMedia(mp4BytesStream, video.FileName),
+                    replyToMessageId: message.MessageId);
+            }
+        }
+        catch (Exception e)
+        {
+            await client.SendTextMessageAsync(
+                message.Chat.Id,
+                "Oops! Can't process your video, please try again uwu 🍑" + "\n" + e.Message,
+                replyToMessageId: message.MessageId);
+            throw;
+        }
+    }
+
     private static TelegramBotClient GetTelegramBotClient(ILogger logger)
     {
         var token = Environment.GetEnvironmentVariable("TelegramBotToken");
