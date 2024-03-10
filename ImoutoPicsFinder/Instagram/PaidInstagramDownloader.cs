@@ -63,7 +63,7 @@ public class PaidInstagramDownloader
                     new List<InstagramMedia>
                         { new(
                             videoBytes, 
-                            GetFileName(instagramPost.VideoUrl), 
+                            GetFileName(instagramPost.VideoUrl, instagramPost.User, instagramPost.TakenAt), 
                             InstagramMediaType.Video) },
                     ""),
                 true, null);
@@ -77,7 +77,7 @@ public class PaidInstagramDownloader
                     new List<InstagramMedia>
                         { new(
                             photoBytes, 
-                            GetFileName(instagramPost.ThumbnailUrl), 
+                            GetFileName(instagramPost.ThumbnailUrl, instagramPost.User, instagramPost.TakenAt), 
                             InstagramMediaType.Photo) },
                     ""),
                 true, null);
@@ -117,7 +117,7 @@ public class PaidInstagramDownloader
                 {
                     var maxImage = media.ImageVersions2.Candidates.MaxBy(x => x.Width);
                     var photoBytes = await client.GetByteArrayAsync(maxImage.Url);
-                    files.Add(new (photoBytes, GetFileName(maxImage.Url), InstagramMediaType.Photo));
+                    files.Add(new (photoBytes, GetFileName(maxImage.Url, item.User, item.TakenAt), InstagramMediaType.Photo));
                 }
                 else
                 {
@@ -134,7 +134,7 @@ public class PaidInstagramDownloader
             return new Result<InstagramPost>(
                 new InstagramPost(
                     url,
-                    new List<InstagramMedia> { new (videoBytes, GetFileName(maxVideo.Url), InstagramMediaType.Video) }, 
+                    new List<InstagramMedia> { new (videoBytes, GetFileName(maxVideo.Url, item.User, item.TakenAt), InstagramMediaType.Video) }, 
                     caption),
                 true, null);
         }
@@ -146,7 +146,7 @@ public class PaidInstagramDownloader
                 new InstagramPost(
                     url,
                     new List<InstagramMedia>
-                        { new(feedImageBytes, GetFileName(maxFeedImage.Url), InstagramMediaType.Photo) },
+                        { new(feedImageBytes, GetFileName(maxFeedImage.Url, item.User, item.TakenAt), InstagramMediaType.Photo) },
                     caption),
                 true, null);
         }
@@ -154,7 +154,32 @@ public class PaidInstagramDownloader
         return new Result<InstagramPost>(null, false, "Unknown product type");
     }
     
-    private string GetFileName(string url) => Path.GetFileName(url).Split('?').First();
+    private string GetFileName(string url, User user, object takenAt)
+    {
+        var urlFileName = Path.GetFileName(url).Split('?').First();
+        var urlFileExtension = Path.GetExtension(urlFileName);
+        
+        var time = takenAt switch
+        {
+            int unix 
+                => DateTimeOffset.FromUnixTimeSeconds(unix) as DateTimeOffset?,
+            string dateTime when DateTimeOffset.TryParse(dateTime, out var dateTimeValue) 
+                => dateTimeValue,
+            JsonElement { ValueKind: JsonValueKind.Number } number when number.TryGetInt64(out var at) 
+                => DateTimeOffset.FromUnixTimeSeconds(at),
+            JsonElement { ValueKind: JsonValueKind.String } str when str.TryGetDateTime(out var at) 
+                => at,
+            _ => null
+        };
+
+        if (user != null)
+        {
+            var name =  user.Username != null ? $"{user.Username}" : "";
+            return name + (time.HasValue ? " at " + time.Value.ToString("yyyy-MM-dd HH.mm.ss") : "") + urlFileExtension;
+        }
+
+        return urlFileName;
+    }
 }
 
 public record Result<T>(T Value, bool IsSuccess, string Error);

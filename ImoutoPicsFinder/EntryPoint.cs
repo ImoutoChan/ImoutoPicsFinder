@@ -107,19 +107,37 @@ public static class EntryPoint
             }
 
             var content = result.Value.Files;
-            
-            var processed = false;
-            foreach (var item in content)
+
+            if (!content.Any())
             {
-                processed = true;
+                await client.SendTextMessageAsync(
+                    message.Chat.Id,
+                    "Oops! Can't process your insta post, please try again uwu 🍑",
+                    replyToMessageId: message.MessageId);
+                return;
+            }
+
+            if (content.Count > 1)
+            {
+                await client.SendMediaGroupAsync(
+                    message.Chat.Id,
+                    content.Select(
+                        x => x.Type switch
+                        {
+                            InstagramMediaType.Video => new InputMediaVideo(
+                                new InputMedia(new MemoryStream(x.File), x.Name)) as IAlbumInputMedia,
+                            InstagramMediaType.Photo => new InputMediaPhoto(
+                                new InputMedia(new MemoryStream(x.File), x.Name)),
+                            _ => throw new ArgumentOutOfRangeException()
+                        }).ToList(),
+                    replyToMessageId: message.MessageId);
+            }
+            else
+            {
+                var item = content.First();
                 if (item.Type == InstagramMediaType.Photo)
                 {
                     await client.SendPhotoAsync(
-                        message.Chat.Id,
-                        new InputMedia(new MemoryStream(item.File), item.Name),
-                        replyToMessageId: message.MessageId);
-                    
-                    await client.SendDocumentAsync(
                         message.Chat.Id,
                         new InputMedia(new MemoryStream(item.File), item.Name),
                         replyToMessageId: message.MessageId);
@@ -130,19 +148,14 @@ public static class EntryPoint
                         message.Chat.Id,
                         new InputMedia(new MemoryStream(item.File), item.Name),
                         replyToMessageId: message.MessageId);
-                    
-                    await client.SendDocumentAsync(
-                        message.Chat.Id,
-                        new InputMedia(new MemoryStream(item.File), item.Name),
-                        replyToMessageId: message.MessageId);
                 }
             }
-            
-            if (!processed)
+
+            foreach (var item in content)
             {
-                await client.SendTextMessageAsync(
+                await client.SendDocumentAsync(
                     message.Chat.Id,
-                    "Oops! Can't process your insta post, please try again uwu 🍑",
+                    new InputMedia(new MemoryStream(item.File), item.Name),
                     replyToMessageId: message.MessageId);
             }
         }

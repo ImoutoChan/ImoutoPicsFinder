@@ -12,7 +12,10 @@ public record Item(
     [property: JsonPropertyName("product_type")] string ProductType,
     [property: JsonPropertyName("carousel_media")] IReadOnlyList<CarouselMedium> CarouselMedia,
     [property: JsonPropertyName("video_versions")] IReadOnlyList<VideoVersion> VideoVersions,
-    [property: JsonPropertyName("image_versions2")] ImageVersions2 ImageVersions2
+    [property: JsonPropertyName("image_versions2")] ImageVersions2 ImageVersions2,
+    [property: JsonPropertyName("user")] User User,
+    [property: JsonPropertyName("taken_at")] object TakenAt
+
     
 );
 

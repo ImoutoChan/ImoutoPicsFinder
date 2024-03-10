@@ -5,3 +5,5 @@
 /ImoutoPicsFinder.Tests/obj/*
 /ImoutoPicsFinder.sln.DotSettings.user
 /ImoutoPicsFinder.Tests/Tokens.cs
+/.vs/*
+/ImoutoPicsFinder/ImoutoPicsFinder.csproj.user

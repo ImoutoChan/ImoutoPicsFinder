@@ -21,6 +21,7 @@ public class PaidInstagramDownloaderTests
             item.Type.Should().Be(InstagramMediaType.Video);
             item.File.Should().NotBeNull();
             item.File.Length.Should().Be(1642297);
+            item.Name.Should().Be("norajoy_official at 2023-06-21 23.51.59.mp4");
         }
     }
 
