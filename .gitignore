@@ -1,3 +1,7 @@
 /.idea/*
 /ImoutoPicsFinder/bin/*
 /ImoutoPicsFinder/obj/*
+/ImoutoPicsFinder.Tests/bin/*
+/ImoutoPicsFinder.Tests/obj/*
+/ImoutoPicsFinder.sln.DotSettings.user
+/ImoutoPicsFinder.Tests/Tokens.cs

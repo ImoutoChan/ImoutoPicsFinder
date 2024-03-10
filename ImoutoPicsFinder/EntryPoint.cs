@@ -3,6 +3,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using ImoutoPicsFinder.Instagram;
 using ImoutoPicsFinder.TikTok;
 using IqdbApi;
 using Microsoft.AspNetCore.Http;
@@ -48,6 +49,18 @@ public static class EntryPoint
             return;
         }
         
+        if (update.Message?.Text?.Contains("instagram.com") == true)
+        {
+            await DownloadInstagramAsync(client, update.Message);
+            return;
+        }
+        
+        if (update.Message?.Text?.StartsWith("/tiktok") == true)
+        {
+            await DownloadTikTokAsync(client, update.Message, update.Message?.Text.Split(" ").LastOrDefault());
+            return;
+        }
+        
         if (update.Message == null
             ||update.Type != UpdateType.Message
             || update.Message?.Photo == null
@@ -70,12 +83,92 @@ public static class EntryPoint
         }
     }
 
-    private static async Task DownloadTikTokAsync(TelegramBotClient client, Message message)
+    private static async Task DownloadInstagramAsync(
+        ITelegramBotClient client,
+        Message message)
     {
         try
         {
-            var url = message.Text?.Split(" ").First(x => x.Contains("tiktok.com")) ?? "";
-            var tikTokData = await new TikTokDownloader().GetContentFromTikTokAsync(url);
+            var instagramAccessToken = Environment.GetEnvironmentVariable("InstagramAccessToken") 
+                                       ?? throw new Exception("Unable to read InstagramAccessToken");
+            
+            var downloader = new PaidInstagramDownloader(instagramAccessToken);
+            var url = message.Text?.Split(" ").First(x => x.Contains("instagram.com")) ?? "";
+            
+            var result = await downloader.GetMediaOrStory(url);
+
+            if (!result.IsSuccess)
+            {
+                await client.SendTextMessageAsync(
+                    message.Chat.Id,
+                    "Oops! Can't process your insta post, please try again uwu 🍑" + "\n" + result.Error,
+                    replyToMessageId: message.MessageId);
+                return;
+            }
+
+            var content = result.Value.Files;
+            
+            var processed = false;
+            foreach (var item in content)
+            {
+                processed = true;
+                if (item.Type == InstagramMediaType.Photo)
+                {
+                    await client.SendPhotoAsync(
+                        message.Chat.Id,
+                        new InputMedia(new MemoryStream(item.File), item.Name),
+                        replyToMessageId: message.MessageId);
+                    
+                    await client.SendDocumentAsync(
+                        message.Chat.Id,
+                        new InputMedia(new MemoryStream(item.File), item.Name),
+                        replyToMessageId: message.MessageId);
+                }
+                else
+                {
+                    await client.SendVideoAsync(
+                        message.Chat.Id,
+                        new InputMedia(new MemoryStream(item.File), item.Name),
+                        replyToMessageId: message.MessageId);
+                    
+                    await client.SendDocumentAsync(
+                        message.Chat.Id,
+                        new InputMedia(new MemoryStream(item.File), item.Name),
+                        replyToMessageId: message.MessageId);
+                }
+            }
+            
+            if (!processed)
+            {
+                await client.SendTextMessageAsync(
+                    message.Chat.Id,
+                    "Oops! Can't process your insta post, please try again uwu 🍑",
+                    replyToMessageId: message.MessageId);
+            }
+        }
+        catch (Exception e)
+        {
+            await client.SendTextMessageAsync(
+                message.Chat.Id,
+                "Oops! Can't process your insta post, please try again uwu 🍑" + "\n" + e.Message,
+                replyToMessageId: message.MessageId);
+        }
+    }
+
+    private static async Task DownloadTikTokAsync(ITelegramBotClient client, Message message, string id = null)
+    {
+        try
+        {
+            TikTokDownloader.DownloadData tikTokData;
+            if (id == null)
+            {    
+                var url = message.Text?.Split(" ").First(x => x.Contains("tiktok.com")) ?? "";
+                tikTokData = await new TikTokDownloader().GetContentFromTikTokAsync(url);
+            }
+            else
+            {
+                tikTokData = await new TikTokDownloader().GetContentFromTikTokIdAsync(id);
+            }
 
             if (tikTokData == null || !tikTokData.VideoList.Any())
             {
@@ -102,7 +195,6 @@ public static class EntryPoint
                 message.Chat.Id,
                 "Oops! Can't process your video, please try again uwu 🍑" + "\n" + e.Message,
                 replyToMessageId: message.MessageId);
-            throw;
         }
     }
 
