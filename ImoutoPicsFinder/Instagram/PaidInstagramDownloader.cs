@@ -111,20 +111,24 @@ public class PaidInstagramDownloader
         if (type == ProductType.CarouselContainer)
         {
             var files = new List<InstagramMedia>();
-            foreach (var media in item.CarouselMedia)
+            
+            for (var i = 0; i < item.CarouselMedia.Count; i++)
             {
+                var media = item.CarouselMedia[i];
+
                 if (media.MediaType == 1)
                 {
                     var maxImage = media.ImageVersions2.Candidates.MaxBy(x => x.Width);
                     var photoBytes = await client.GetByteArrayAsync(maxImage.Url);
-                    files.Add(new (photoBytes, GetFileName(maxImage.Url, item.User, item.TakenAt), InstagramMediaType.Photo));
+                    files.Add(
+                        new(photoBytes, GetFileName(maxImage.Url, item.User, item.TakenAt, i), InstagramMediaType.Photo));
                 }
                 else
                 {
                     throw new NotImplementedException($"Unknown media type in carousel {media.MediaType}");
                 }
             }
-            
+
             return new Result<InstagramPost>(new InstagramPost(url, files, caption), true, null);
         }
         else if (type == ProductType.Clips)
@@ -154,10 +158,11 @@ public class PaidInstagramDownloader
         return new Result<InstagramPost>(null, false, "Unknown product type");
     }
     
-    private string GetFileName(string url, User user, object takenAt)
+    private string GetFileName(string url, User user, object takenAt, int? index = null)
     {
         var urlFileName = Path.GetFileName(url).Split('?').First();
         var urlFileExtension = Path.GetExtension(urlFileName);
+        var indexStr = index == null ? "" : $"_{index}";
         
         var time = takenAt switch
         {
@@ -175,7 +180,7 @@ public class PaidInstagramDownloader
         if (user != null)
         {
             var name =  user.Username != null ? $"{user.Username}" : "";
-            return name + (time.HasValue ? " at " + time.Value.ToString("yyyy-MM-dd HH.mm.ss") : "") + urlFileExtension;
+            return name + (time.HasValue ? " at " + time.Value.ToString("yyyy-MM-dd HH.mm.ss") : "") + indexStr + urlFileExtension;
         }
 
         return urlFileName;
