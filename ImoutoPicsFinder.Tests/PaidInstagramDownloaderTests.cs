@@ -137,4 +137,30 @@ public class PaidInstagramDownloaderTests
             item.File.Length.Should().Be(917990);
         }
     }
+
+    [Fact]
+    public async Task InstagramDownloaderShouldGetCarouselWithVideo()
+    {
+        var downloader = new PaidInstagramDownloader(Tokens.PaidInstagramToken);
+
+        var content = await downloader.GetMedia("https://www.instagram.com/p/By0jB0XJGpj/");
+
+        content.IsSuccess.Should().BeTrue();
+
+        var item = content.Value.Files.First();
+        
+        await File.WriteAllBytesAsync(item.Name, item.File);
+
+        item.Type.Should().Be(InstagramMediaType.Photo);
+        item.File.Should().NotBeNull();
+        item.File.Length.Should().Be(198136);
+
+        item = content.Value.Files.Last();
+        
+        await File.WriteAllBytesAsync(item.Name, item.File);
+
+        item.Type.Should().Be(InstagramMediaType.Video);
+        item.File.Should().NotBeNull();
+        item.File.Length.Should().Be(590256);
+    }
 }

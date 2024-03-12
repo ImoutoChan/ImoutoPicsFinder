@@ -27,6 +27,7 @@ public record CarouselMedium(
     // 1 -- image
     [property: JsonPropertyName("media_type")] int? MediaType,
     [property: JsonPropertyName("image_versions2")] ImageVersions2 ImageVersions2,
+    [property: JsonPropertyName("video_versions")] IReadOnlyList<VideoVersion> VideoVersions,
     [property: JsonPropertyName("original_width")] int? OriginalWidth,
     [property: JsonPropertyName("original_height")] int? OriginalHeight
 );

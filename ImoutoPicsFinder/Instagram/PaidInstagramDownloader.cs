@@ -123,6 +123,13 @@ public class PaidInstagramDownloader
                     files.Add(
                         new(photoBytes, GetFileName(maxImage.Url, item.User, item.TakenAt, i), InstagramMediaType.Photo));
                 }
+                else if (media.MediaType == 2)
+                {
+                    var maxVideo = media.VideoVersions.MaxBy(x => x.Width);
+                    var videoBytes = await client.GetByteArrayAsync(maxVideo.Url);
+                    files.Add(
+                        new(videoBytes, GetFileName(maxVideo.Url, item.User, item.TakenAt, i), InstagramMediaType.Video));
+                }
                 else
                 {
                     throw new NotImplementedException($"Unknown media type in carousel {media.MediaType}");
