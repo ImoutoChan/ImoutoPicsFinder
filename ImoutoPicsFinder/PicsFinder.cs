@@ -33,9 +33,9 @@ public class PicsFinder
         var replyMessage = await GetReplyMessageAsync(fileId);
 
         await _telegramBotClient.SendTextMessageAsync(
-            message.Chat.Id, 
-            replyMessage, 
-            ParseMode.Html,
+            chatId: message.Chat.Id, 
+            text: replyMessage, 
+            parseMode: ParseMode.Html,
             replyToMessageId: message.MessageId);
     }
 

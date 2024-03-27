@@ -8,8 +8,7 @@ using ImoutoPicsFinder.TikTok;
 using IqdbApi;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
-using Microsoft.Azure.WebJobs;
-using Microsoft.Azure.WebJobs.Extensions.Http;
+using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
 using Telegram.Bot;
@@ -18,20 +17,24 @@ using Telegram.Bot.Types.Enums;
 
 namespace ImoutoPicsFinder;
 
-public static class EntryPoint
+public class ImoutoPicsFinderFunction
 {
-    [FunctionName("ImoutoPicsFinder")]
-    public static async Task Update(
-        [HttpTrigger(AuthorizationLevel.Anonymous, "post", Route = null)] HttpRequest request,
-        ILogger logger)
-    {
-        logger.LogInformation("PicsFinder function triggered");
-        logger.LogInformation(request.GetDisplayUrl());
+    private readonly ILogger<ImoutoPicsFinderFunction> _logger;
 
-        var client = GetTelegramBotClient(logger);
+    public ImoutoPicsFinderFunction(ILogger<ImoutoPicsFinderFunction> logger) => _logger = logger;
+
+    [Function("ImoutoPicsFinder")]
+    public async Task Update(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post")] 
+        HttpRequest request)
+    {
+        _logger.LogInformation("PicsFinder function triggered");
+        _logger.LogInformation(request.GetDisplayUrl());
+
+        var client = GetTelegramBotClient(_logger);
         var picsFinder = new PicsFinder(client, new IqdbClient());
 
-        var requestBody = await request.ReadAsStringAsync();
+        var requestBody = await new StreamReader(request.Body).ReadToEndAsync();
         var update = JsonConvert.DeserializeObject<Update>(requestBody);
 
         if (update.Message?.Text == "/start")
@@ -75,7 +78,7 @@ public static class EntryPoint
         }
         catch (Exception e)
         {
-            logger.LogError(e, "PicsFinder function failed" + e.Message);
+            _logger.LogError(e, "PicsFinder function failed" + e.Message);
             await client.SendTextMessageAsync(
                 update.Message!.Chat.Id,
                 "Oops! Can't process your picture, please try again uwu 🍑" + "\n" + e.Message,
@@ -125,9 +128,9 @@ public static class EntryPoint
                         x => x.Type switch
                         {
                             InstagramMediaType.Video => new InputMediaVideo(
-                                new InputMedia(new MemoryStream(x.File), x.Name)) as IAlbumInputMedia,
+                                new InputFileStream(new MemoryStream(x.File), x.Name)) as IAlbumInputMedia,
                             InstagramMediaType.Photo => new InputMediaPhoto(
-                                new InputMedia(new MemoryStream(x.File), x.Name)),
+                                new InputFileStream(new MemoryStream(x.File), x.Name)),
                             _ => throw new ArgumentOutOfRangeException()
                         }).ToList(),
                     replyToMessageId: message.MessageId);
@@ -139,14 +142,14 @@ public static class EntryPoint
                 {
                     await client.SendPhotoAsync(
                         message.Chat.Id,
-                        new InputMedia(new MemoryStream(item.File), item.Name),
+                        new InputFileStream(new MemoryStream(item.File), item.Name),
                         replyToMessageId: message.MessageId);
                 }
                 else
                 {
                     await client.SendVideoAsync(
                         message.Chat.Id,
-                        new InputMedia(new MemoryStream(item.File), item.Name),
+                        new InputFileStream(new MemoryStream(item.File), item.Name),
                         replyToMessageId: message.MessageId);
                 }
             }
@@ -155,7 +158,7 @@ public static class EntryPoint
             {
                 await client.SendDocumentAsync(
                     message.Chat.Id,
-                    new InputMedia(new MemoryStream(item.File), item.Name),
+                    new InputFileStream(new MemoryStream(item.File), item.Name),
                     replyToMessageId: message.MessageId);
             }
         }
@@ -198,7 +201,7 @@ public static class EntryPoint
 
                 await client.SendVideoAsync(
                     message.Chat.Id,
-                    new InputMedia(mp4BytesStream, video.FileName),
+                    new InputFileStream(mp4BytesStream, video.FileName),
                     replyToMessageId: message.MessageId);
             }
         }
