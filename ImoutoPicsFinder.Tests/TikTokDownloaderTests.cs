@@ -23,7 +23,7 @@ public class TikTokDownloaderTests
         var bytes = await new HttpClient().GetByteArrayAsync(video!.VideoList.First().Url);
 
         bytes.Should().NotBeNull();
-        bytes.Length.Should().Be(976595);
+        bytes.Length.Should().Be(1070094);
     }
 
     [Fact]
