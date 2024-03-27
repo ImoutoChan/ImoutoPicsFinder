@@ -82,7 +82,8 @@ public class TikTokDownloader
         {
             var request = new HttpRequestMessage
             {
-                RequestUri = new Uri($"https://api16-normal-c-useast1a.tiktokv.com/aweme/v1/feed/?aweme_id={tiktokId}"),
+                //RequestUri = new Uri($"https://api16-normal-c-useast1a.tiktokv.com/aweme/v1/feed/?aweme_id={tiktokId}"),
+                RequestUri = new Uri($"https://api22-normal-c-alisg.tiktokv.com/aweme/v1/feed/?iid=7318518857994389254&device_id=7318517321748022790&channel=googleplay&app_name=musical_ly&version_code=300904&device_platform=android&device_type=ASUS_Z01QD&os_version=9&aweme_id={tiktokId}"),
                 Method = HttpMethod.Get
             };
             request.Headers.Add("Accept", "application/json");
@@ -94,7 +95,7 @@ public class TikTokDownloader
             // ignored
         }
 
-        if (json == null)
+        if (string.IsNullOrWhiteSpace(json))
             return null;
 
         JObject obj;
