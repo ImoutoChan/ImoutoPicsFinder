@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -186,7 +187,7 @@ public class ImoutoPicsFinderFunction
                 tikTokData = await new TikTokDownloader().GetContentFromTikTokIdAsync(id);
             }
 
-            if (tikTokData == null || !tikTokData.VideoList.Any())
+            if (tikTokData == null || !tikTokData.VideoList.Any() && !tikTokData.ImageList.Any())
             {
                 await client.SendTextMessageAsync(
                     message.Chat.Id,
@@ -194,15 +195,48 @@ public class ImoutoPicsFinderFunction
                     replyToMessageId: message.MessageId);
                 return;
             }
-            
+
+            var sentByteLength = new List<long>();
             foreach (var video in tikTokData.VideoList)
             {
+                using var ms = new MemoryStream();
                 await using var mp4BytesStream = await new HttpClient().GetStreamAsync(video.Url);
+                await mp4BytesStream.CopyToAsync(ms);
+                ms.Seek(0, SeekOrigin.Begin);
+
+                if (sentByteLength.Contains(ms.Length))
+                    continue;
 
                 await client.SendVideoAsync(
                     message.Chat.Id,
-                    new InputFileStream(mp4BytesStream, video.FileName),
+                    new InputFileStream(ms, video.FileName),
                     replyToMessageId: message.MessageId);
+                sentByteLength.Add(ms.Length);
+            }
+
+            if (tikTokData.ImageList.Any())
+            {
+                var images = new List<(byte[] Content, string FileName)>();
+                foreach (var image in tikTokData.ImageList)
+                {
+                    var bytes = await new HttpClient().GetByteArrayAsync(image.Url);
+                    images.Add((bytes, image.FileName));
+                }
+
+                await client.SendMediaGroupAsync(
+                    message.Chat.Id,
+                    images
+                        .Select(x => new InputMediaPhoto(new InputFileStream(new MemoryStream(x.Content), x.FileName)))
+                        .ToList(),
+                    replyToMessageId: message.MessageId);
+
+                foreach (var image in images)
+                {
+                    await client.SendDocumentAsync(
+                        message.Chat.Id,
+                        new InputFileStream(new MemoryStream(image.Content), image.FileName),
+                        replyToMessageId: message.MessageId);
+                }
             }
         }
         catch (Exception e)

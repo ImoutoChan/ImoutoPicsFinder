@@ -3,10 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace ImoutoPicsFinder.TikTok;
 
@@ -83,10 +82,14 @@ public class TikTokDownloader
             var request = new HttpRequestMessage
             {
                 //RequestUri = new Uri($"https://api16-normal-c-useast1a.tiktokv.com/aweme/v1/feed/?aweme_id={tiktokId}"),
-                RequestUri = new Uri($"https://api22-normal-c-alisg.tiktokv.com/aweme/v1/feed/?iid=7318518857994389254&device_id=7318517321748022790&channel=googleplay&app_name=musical_ly&version_code=300904&device_platform=android&device_type=ASUS_Z01QD&os_version=9&aweme_id={tiktokId}"),
-                Method = HttpMethod.Get
+                //RequestUri = new Uri($"https://api22-normal-c-alisg.tiktokv.com/aweme/v1/feed/?iid=7318518857994389254&device_id=7318517321748022790&channel=googleplay&app_name=musical_ly&version_code=300904&device_platform=android&device_type=ASUS_Z01QD&os_version=9&aweme_id={tiktokId}"),
+                RequestUri = new Uri($"https://api22-normal-c-alisg.tiktokv.com/aweme/v1/feed/?aweme_id={tiktokId}&iid=7318518857994389254&device_id=7318517321748022790&channel=googleplay&app_name=musical_ly&version_code=300904&device_platform=android&device_type=ASUS_Z01QD&version=9"),
+                Method = HttpMethod.Options
             };
             request.Headers.Add("Accept", "application/json");
+            request.Headers.Add(
+                "User-Agent",
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.3");
             var response = await new HttpClient().SendAsync(request);
             json = await response.Content.ReadAsStringAsync();
         }
@@ -98,39 +101,71 @@ public class TikTokDownloader
         if (string.IsNullOrWhiteSpace(json))
             return null;
 
-        JObject obj;
+        JsonModel jsonResponse;
         try
         {
-            obj = JsonConvert.DeserializeObject<JObject>(json)!;
+            jsonResponse = JsonSerializer.Deserialize<JsonModel>(json)!;
         }
         catch (Exception)
         {
             return null;
         }
 
-        var awemeList = obj["aweme_list"] as JArray;
-        var targetAweme = awemeList![0];
+        var targetAweme = jsonResponse.AwemeList[0];
+
+        if (targetAweme.AwemeId != tiktokId)
+        {
+            // video was deleted
+            return null;
+        }
+        
+        var namePrefix = targetAweme.Author.UniqueId + " (" + targetAweme.Author.Nickname + ")";
+        
         var urlVideoList = new List<UrlDescription>();
-        var video = targetAweme["video"];
+        var video = targetAweme.Video;
         if (video != null)
         {
-            var bitRate = video["bit_rate"] as JArray;
-            foreach (var urlVideo in bitRate!)
+            urlVideoList.Add(new UrlDescription
             {
-                var gearName = urlVideo["gear_name"]!.ToString();
-                var playAddr = urlVideo["play_addr"]!["url_list"]![0]!.ToString();
+                Url = video.PlayAddr.UrlList[0],
+                FileName = $"{namePrefix}_play_{tiktokId}.mp4"
+            });
+            
+            foreach (var urlVideo in video.BitRate)
+            {
+                var gearName = urlVideo.GearName;
+                var playAddr = urlVideo.PlayAddr.UrlList[0];
                 urlVideoList.Add(new UrlDescription
                 {
                     Url = playAddr,
-                    FileName = $"no_watermark_{gearName}_{tiktokId}.mp4"
+                    FileName = $"{namePrefix}_{gearName}_{tiktokId}.mp4"
                 });
                 break;
             }
         }
 
+        var imageList = new List<UrlDescription>();
+        var imageInfo = targetAweme.ImagePostInfo;
+        if (imageInfo != null)
+        {
+            var counter = 0;
+            foreach (var image in imageInfo.Images)
+            {
+                imageList.Add(
+                    new UrlDescription
+                    {
+                        // url_list[0] contains a webp
+                        // url_list[1] contains a jpeg
+                        Url = image.DisplayImage.UrlList[1],
+                        FileName = $"{namePrefix}_{tiktokId}_{counter++}.jpg"
+                    });
+            }
+        }
+
         return new DownloadData
         {
-            VideoList = urlVideoList
+            VideoList = urlVideoList,
+            ImageList = imageList
         };
     }
 
@@ -146,5 +181,6 @@ public class TikTokDownloader
     public class DownloadData
     {
         public List<UrlDescription> VideoList { get; set; } = default!;
+        public List<UrlDescription> ImageList { get; set; } = default!;
     }
 }

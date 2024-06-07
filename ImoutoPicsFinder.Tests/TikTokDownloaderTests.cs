@@ -1,5 +1,6 @@
 using FluentAssertions;
 using ImoutoPicsFinder.TikTok;
+using Xunit;
 
 namespace ImoutoPicsFinder.Tests;
 
@@ -9,21 +10,25 @@ public class TikTokDownloaderTests
     public async Task TikTokDownloaderShouldDownloadVideoBytesFromLink()
     {
         var downloader = new TikTokDownloader();
-        var video = await downloader.GetContentFromTikTokAsync("https://vt.tiktok.com/ZSFkwH1Je");
+        var video = await downloader.GetContentFromTikTokAsync("https://vt.tiktok.com/ZSYks7mnV");
         var bytes = await new HttpClient().GetByteArrayAsync(video!.VideoList.First().Url);
 
         bytes.Should().NotBeNull();
-        bytes.Length.Should().Be(976595);
+        bytes.Length.Should().Be(2304588);
     }
     [Fact]
-    public async Task TikTokDownloaderShouldDownloadVideoBytesFromLink2()
+    public async Task TikTokDownloaderShouldDownloadImagesFromLink()
     {
         var downloader = new TikTokDownloader();
-        var video = await downloader.GetContentFromTikTokAsync("https://vt.tiktok.com/ZSFQ4DuMj");
-        var bytes = await new HttpClient().GetByteArrayAsync(video!.VideoList.First().Url);
+        var tiktok = await downloader.GetContentFromTikTokAsync("https://vt.tiktok.com/ZSYkWHN67");
+
+        tiktok?.ImageList.Should().NotBeNull();
+        tiktok!.ImageList.Should().HaveCount(5);
+        
+        var bytes = await new HttpClient().GetByteArrayAsync(tiktok.ImageList.First().Url);
 
         bytes.Should().NotBeNull();
-        bytes.Length.Should().Be(1070094);
+        bytes.Length.Should().Be(146594);
     }
 
     [Fact]
@@ -38,13 +43,13 @@ public class TikTokDownloaderTests
     }
 
     [Fact]
-    public async Task TikTokDownloaderShouldDownloadVideoBytesFromId7327828687620050222()
+    public async Task TikTokDownloaderShouldDownloadVideoBytesFromId7376887901293923601()
     {
         var downloader = new TikTokDownloader();
-        var video = await downloader.GetContentFromTikTokIdAsync("7327828687620050222");
+        var video = await downloader.GetContentFromTikTokIdAsync("7376887901293923601");
         var bytes = await new HttpClient().GetByteArrayAsync(video!.VideoList.First().Url);
 
         bytes.Should().NotBeNull();
-        bytes.Length.Should().Be(976595);
+        bytes.Length.Should().Be(2304588);
     }
 }

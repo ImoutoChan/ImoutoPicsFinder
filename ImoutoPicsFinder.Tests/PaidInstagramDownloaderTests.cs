@@ -1,5 +1,6 @@
 ﻿using FluentAssertions;
 using ImoutoPicsFinder.Instagram;
+using Xunit;
 
 namespace ImoutoPicsFinder.Tests;
 
