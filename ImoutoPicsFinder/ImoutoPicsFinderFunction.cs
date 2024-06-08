@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Json;
 using System.Threading.Tasks;
 using ImoutoPicsFinder.Boosty;
 using ImoutoPicsFinder.FileSplitter;
@@ -26,10 +27,47 @@ public class ImoutoPicsFinderFunction
 
     public ImoutoPicsFinderFunction(ILogger<ImoutoPicsFinderFunction> logger) => _logger = logger;
 
+    [Function("ImoutoPicsBoostyFinder")]
+    public async Task ProcessBoosty(
+        [HttpTrigger(AuthorizationLevel.Anonymous, "post")]
+        HttpRequest request)
+    {
+        try
+        {
+            _logger.LogInformation("PicsFinder boosty function triggered");
+            _logger.LogInformation(request.GetDisplayUrl());
+        
+            var requestBody = await new StreamReader(request.Body).ReadToEndAsync();
+            var update = JsonConvert.DeserializeObject<Update>(requestBody);
+        
+            var client = GetTelegramBotClient(_logger);
+            await DownloadBoostyAsync(client, update.Message);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "unable to process boosty request" + e.Message);
+            throw;
+        }
+    }
+    
+    
     [Function("ImoutoPicsFinder")]
     public async Task Update(
         [HttpTrigger(AuthorizationLevel.Anonymous, "post")] 
         HttpRequest request)
+    {
+        try
+        {
+            await ProcessTelegramUpdate(request);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "unable to process telegram request" + e.Message);
+            throw;
+        }
+    }
+
+    private async Task ProcessTelegramUpdate(HttpRequest request)
     {
         _logger.LogInformation("PicsFinder function triggered");
         _logger.LogInformation(request.GetDisplayUrl());
@@ -69,7 +107,26 @@ public class ImoutoPicsFinderFunction
         
         if (update.Message?.Text?.Contains("boosty.to") == true)
         {
-            await DownloadBoostyAsync(client, update.Message);
+            var functionClient = new HttpClient();
+            functionClient.Timeout = TimeSpan.FromMinutes(30);
+            
+            var postTask = functionClient
+                .PostAsync("https://imoutopicsfinder.azurewebsites.net/api/ImoutoPicsBoostyFinder",
+                    new StringContent(requestBody));
+
+            var timer = Task.Delay(30 * 1000);
+            
+            var task = await Task.WhenAny(postTask, timer);
+
+            if (task == timer)
+            {
+                _logger.LogInformation("Boosty function will be processed outside of the current scope");
+            }
+            else
+            {
+                await task;
+            }
+
             return;
         }
         
