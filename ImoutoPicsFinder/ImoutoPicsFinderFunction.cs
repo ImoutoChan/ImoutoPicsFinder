@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
+using ImoutoPicsFinder.Boosty;
 using ImoutoPicsFinder.Instagram;
 using ImoutoPicsFinder.TikTok;
 using IqdbApi;
@@ -62,6 +63,12 @@ public class ImoutoPicsFinderFunction
         if (update.Message?.Text?.StartsWith("/tiktok") == true)
         {
             await DownloadTikTokAsync(client, update.Message, update.Message?.Text.Split(" ").LastOrDefault());
+            return;
+        }
+        
+        if (update.Message?.Text?.Contains("boosty.to") == true)
+        {
+            await DownloadBoostyAsync(client, update.Message);
             return;
         }
         
@@ -168,6 +175,71 @@ public class ImoutoPicsFinderFunction
             await client.SendTextMessageAsync(
                 message.Chat.Id,
                 "Oops! Can't process your insta post, please try again uwu 🍑" + "\n" + e.Message,
+                replyToMessageId: message.MessageId);
+        }
+    }
+    
+    private static async Task DownloadBoostyAsync(ITelegramBotClient client, Message message)
+    {
+        try
+        {
+            var url = message.Text;
+            var downloader = new BoostyDownloader();
+            
+            var links = await downloader.GetLinksAsync(url!).ToListAsync();
+
+            if (!links.Any())
+            {
+                await client.SendTextMessageAsync(
+                    message.Chat.Id,
+                    "Oops! Your boosty link is kinda empty and lonely, please try again uwu 🍑",
+                    replyToMessageId: message.MessageId);
+                return;
+            }
+
+            var videos = links.Where(x => x.Type == BoostyMediaType.Video).ToList();
+            var images = links.Where(x => x.Type == BoostyMediaType.Photo).ToList();
+            
+            foreach (var video in videos)
+            {
+                var bytes = await downloader.DownloadLinkAsync(video.Url);
+
+                await client.SendVideoAsync(
+                    message.Chat.Id,
+                    new InputFileStream(new MemoryStream(bytes), video.FileName),
+                    replyToMessageId: message.MessageId);
+            }
+
+            if (images.Any())
+            {
+                var downloadedImages = new List<(byte[] Content, string FileName)>();
+                foreach (var image in images)
+                {
+                    var bytes = await downloader.DownloadLinkAsync(image.Url);
+                    downloadedImages.Add((bytes, image.FileName));
+                }
+
+                await client.SendMediaGroupAsync(
+                    message.Chat.Id,
+                    downloadedImages
+                        .Select(x => new InputMediaPhoto(new InputFileStream(new MemoryStream(x.Content), x.FileName)))
+                        .ToList(),
+                    replyToMessageId: message.MessageId);
+
+                foreach (var image in downloadedImages)
+                {
+                    await client.SendDocumentAsync(
+                        message.Chat.Id,
+                        new InputFileStream(new MemoryStream(image.Content), image.FileName),
+                        replyToMessageId: message.MessageId);
+                }
+            }
+        }
+        catch (Exception e)
+        {
+            await client.SendTextMessageAsync(
+                message.Chat.Id,
+                "Oops! Can't process your boosty post, please try again uwu 🍑" + "\n" + e.Message,
                 replyToMessageId: message.MessageId);
         }
     }
