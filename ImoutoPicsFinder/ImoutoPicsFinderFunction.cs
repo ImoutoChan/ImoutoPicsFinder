@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net.Http;
 using System.Threading.Tasks;
 using ImoutoPicsFinder.Boosty;
+using ImoutoPicsFinder.FileSplitter;
 using ImoutoPicsFinder.Instagram;
 using ImoutoPicsFinder.TikTok;
 using IqdbApi;
@@ -204,10 +205,23 @@ public class ImoutoPicsFinderFunction
             {
                 var bytes = await downloader.DownloadLinkAsync(video.Url);
 
-                await client.SendVideoAsync(
-                    message.Chat.Id,
-                    new InputFileStream(new MemoryStream(bytes), video.FileName),
-                    replyToMessageId: message.MessageId);
+                if (FileSplitterToZip.TrySplitFile(bytes, video.FileName, out var split))
+                {
+                    foreach (var (content, fileName) in split)
+                    {
+                        await client.SendDocumentAsync(
+                            message.Chat.Id,
+                            new InputFileStream(new MemoryStream(content), fileName),
+                            replyToMessageId: message.MessageId);
+                    }
+                }
+                else
+                {
+                    await client.SendVideoAsync(
+                        message.Chat.Id,
+                        new InputFileStream(new MemoryStream(bytes), video.FileName),
+                        replyToMessageId: message.MessageId);
+                }
             }
 
             if (images.Any())
@@ -222,6 +236,8 @@ public class ImoutoPicsFinderFunction
                 await client.SendMediaGroupAsync(
                     message.Chat.Id,
                     downloadedImages
+                        // telegram allows photos up to 10 MB
+                        .Where(x => x.Content.Length < 10 * 1024 * 1024)
                         .Select(x => new InputMediaPhoto(new InputFileStream(new MemoryStream(x.Content), x.FileName)))
                         .ToList(),
                     replyToMessageId: message.MessageId);

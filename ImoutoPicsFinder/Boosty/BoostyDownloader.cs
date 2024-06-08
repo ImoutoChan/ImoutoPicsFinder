@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web;
 using ImoutoPicsFinder.Boosty.DialogJsonModel;
@@ -71,7 +72,7 @@ public class BoostyDownloader
         {
             if (media.Type == "image")
             {
-                var fileName = GetFileName(author.Name, author.Url, media.MediaId);
+                var fileName = GetFileName(author.Name, author.Url, media.MediaId, BoostyMediaType.Photo);
                 yield return new BoostyUrlInfo(BoostyMediaType.Photo, media.Url!, fileName);
             }
             else if (media.Type == "ok_video")
@@ -82,7 +83,7 @@ public class BoostyDownloader
                     .Select(x => x.Url)
                     .First();
 
-                var fileName = GetFileName(author.Name, author.Url, media.MediaId);
+                var fileName = GetFileName(author.Name, author.Url, media.MediaId, BoostyMediaType.Video);
                 yield return new BoostyUrlInfo(BoostyMediaType.Video, videoUrl, fileName);
             }
         }
@@ -91,7 +92,7 @@ public class BoostyDownloader
         {
             if (media.Type == "image")
             {
-                var fileName = GetFileName(author.Name, author.Url, media.MediaId);
+                var fileName = GetFileName(author.Name, author.Url, media.MediaId, BoostyMediaType.Photo);
                 yield return new BoostyUrlInfo(BoostyMediaType.Photo, media.Url!, fileName);
             }
             else if (media.Type == "ok_video")
@@ -102,7 +103,7 @@ public class BoostyDownloader
                     .Select(x => x.Url)
                     .First();
 
-                var fileName = GetFileName(author.Name, author.Url, media.MediaId);
+                var fileName = GetFileName(author.Name, author.Url, media.MediaId, BoostyMediaType.Video);
                 yield return new BoostyUrlInfo(BoostyMediaType.Video, videoUrl, fileName);
             }
         }
@@ -117,16 +118,19 @@ public class BoostyDownloader
         return httpClient;
     }
 
-    private static string GetFileName(string name, string url, string mediaId)
+    private static string GetFileName(string name, string url, string mediaId, BoostyMediaType mediaType)
     {
-        var fileName = $"{name} ({url}) " + mediaId + ".jpg";
+        name = Regex.Replace(name, @"\W", "", RegexOptions.Compiled | RegexOptions.NonBacktracking);
+
+        var extension = mediaType == BoostyMediaType.Photo ? "jpg" : "mp4";
+        var fileName = $"{name.Trim()} ({url.Trim()}) {mediaId}.{extension}";
         return fileName;
     }
 
     private static async IAsyncEnumerable<BoostyUrlInfo> GetLinksFromPost(
         HttpClient httpClient, 
         PostBoostyUrlInfo messageInfo)
-    {
+    { 
         httpClient.DefaultRequestHeaders.Add("Authorization", "Bearer " + messageInfo.AuthToken);
             
         // GET https://api.boosty.to/v1/blog/{username}/post/{postId}
@@ -140,7 +144,7 @@ public class BoostyDownloader
         {
             if (media.Type == "image")
             {
-                var fileName = GetFileName(author.Name, author.Url, media.MediaId);
+                var fileName = GetFileName(author.Name, author.Url, media.MediaId, BoostyMediaType.Photo);
                 yield return new BoostyUrlInfo(BoostyMediaType.Photo, media.Url!, fileName);
             }
             else if (media.Type == "ok_video")
@@ -151,7 +155,7 @@ public class BoostyDownloader
                     .Select(x => x.Url)
                     .First();
 
-                var fileName = GetFileName(author.Name, author.Url, media.MediaId);
+                var fileName = GetFileName(author.Name, author.Url, media.MediaId, BoostyMediaType.Video);
                 yield return new BoostyUrlInfo(BoostyMediaType.Video, videoUrl, fileName);
             }
         }
@@ -160,7 +164,7 @@ public class BoostyDownloader
         {
             if (media.Type == "image")
             {
-                var fileName = GetFileName(author.Name, author.Url, media.MediaId);
+                var fileName = GetFileName(author.Name, author.Url, media.MediaId, BoostyMediaType.Photo);
                 yield return new BoostyUrlInfo(BoostyMediaType.Photo, media.Url!, fileName);
             }
             else if (media.Type == "ok_video")
@@ -171,7 +175,7 @@ public class BoostyDownloader
                     .Select(x => x.Url)
                     .First();
 
-                var fileName = GetFileName(author.Name, author.Url, media.MediaId);
+                var fileName = GetFileName(author.Name, author.Url, media.MediaId, BoostyMediaType.Video);
                 yield return new BoostyUrlInfo(BoostyMediaType.Video, videoUrl, fileName);
             }
         }
