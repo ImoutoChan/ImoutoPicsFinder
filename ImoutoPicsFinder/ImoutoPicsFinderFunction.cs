@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
-using System.Net.Http.Json;
 using System.Threading.Tasks;
 using ImoutoPicsFinder.Boosty;
 using ImoutoPicsFinder.FileSplitter;
@@ -45,7 +44,7 @@ public class ImoutoPicsFinderFunction
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "unable to process boosty request" + e.Message);
+            _logger.LogError(e, "Unable to process boosty request: " + e.Message);
             throw;
         }
     }
@@ -62,7 +61,7 @@ public class ImoutoPicsFinderFunction
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "unable to process telegram request" + e.Message);
+            _logger.LogError(e, "Unable to process telegram request: " + e.Message);
             throw;
         }
     }
