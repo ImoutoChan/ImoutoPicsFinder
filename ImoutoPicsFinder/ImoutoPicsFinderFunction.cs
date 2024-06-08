@@ -162,7 +162,7 @@ public class ImoutoPicsFinderFunction
                 }
             }
 
-            foreach (var item in content)
+            foreach (var item in content.Where(x => x.Type == InstagramMediaType.Photo))
             {
                 await client.SendDocumentAsync(
                     message.Chat.Id,
