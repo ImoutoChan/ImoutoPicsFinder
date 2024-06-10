@@ -289,14 +289,29 @@ public class ImoutoPicsFinderFunction
                     downloadedImages.Add((bytes, image.FileName));
                 }
 
-                await client.SendMediaGroupAsync(
-                    message.Chat.Id,
-                    downloadedImages
-                        // telegram allows photos up to 10 MB
-                        .Where(x => x.Content.Length < 10 * 1024 * 1024)
-                        .Select(x => new InputMediaPhoto(new InputFileStream(new MemoryStream(x.Content), x.FileName)))
-                        .ToList(),
-                    replyToMessageId: message.MessageId);
+                var inputMediaPhotos = downloadedImages
+                    // telegram allows photos up to 10 MB
+                    .Where(x => x.Content.Length < 10 * 1024 * 1024)
+                    .Select(x => new InputMediaPhoto(new InputFileStream(new MemoryStream(x.Content), x.FileName)))
+                    .ToList();
+
+                foreach (var mediaPhotoChunk in inputMediaPhotos.Chunk(10))
+                {
+                    if (mediaPhotoChunk.Length > 1)
+                    {
+                        await client.SendMediaGroupAsync(
+                            message.Chat.Id,
+                            mediaPhotoChunk,
+                            replyToMessageId: message.MessageId);
+                    }
+                    else
+                    {
+                        await client.SendPhotoAsync(
+                            message.Chat.Id,
+                            mediaPhotoChunk.First().Media,
+                            replyToMessageId: message.MessageId);
+                    }
+                }
 
                 foreach (var image in downloadedImages)
                 {
