@@ -57,12 +57,11 @@ public class ImoutoPicsFinderFunction
     {
         try
         {
-            await ProcessTelegramUpdate(request);
+            await ProcessTelegramUpdate(request); 
         }
         catch (Exception e)
         {
             _logger.LogError(e, "Unable to process telegram request: " + e.Message);
-            throw;
         }
     }
 
@@ -72,11 +71,42 @@ public class ImoutoPicsFinderFunction
         _logger.LogInformation(request.GetDisplayUrl());
 
         var client = GetTelegramBotClient(_logger);
-        var picsFinder = new PicsFinder(client, new IqdbClient());
 
         var requestBody = await new StreamReader(request.Body).ReadToEndAsync();
+        _logger.LogInformation(requestBody);
+
         var update = JsonConvert.DeserializeObject<Update>(requestBody);
 
+        var task = ProcessUpdateAsync(update, client, requestBody);
+        
+        var timeout = Task.Delay(35 * 1000);
+        if (await Task.WhenAny(task, timeout) == timeout)
+        {
+            if (update.Message != null)
+            {
+                try
+                {
+                    await client.SendTextMessageAsync(
+                        update.Message.Chat.Id,
+                        "Took too much time, sorry, try again! uwu! 🍑");
+                }
+                catch
+                {
+                    // ignore
+                }
+            }
+        }
+        else
+        {
+            await task;
+        }  
+    }
+
+    private async Task ProcessUpdateAsync(
+        Update update,
+        TelegramBotClient client,
+        string requestBody)
+    {
         if (update.Message?.Text == "/start")
         {
             await client.SendTextMessageAsync(
@@ -139,6 +169,7 @@ public class ImoutoPicsFinderFunction
 
         try
         {
+            var picsFinder = new PicsFinder(client, new IqdbClient());
             await picsFinder.ProcessPhotoPostAsync(update.Message!);
         }
         catch (Exception e)
