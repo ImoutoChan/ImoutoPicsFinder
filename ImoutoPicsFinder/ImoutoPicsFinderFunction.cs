@@ -238,6 +238,7 @@ public class ImoutoPicsFinderFunction
     
     private static async Task DownloadBoostyAsync(ITelegramBotClient client, Message message)
     {
+        var currentUrl = string.Empty;
         try
         {
             var url = message.Text;
@@ -259,6 +260,7 @@ public class ImoutoPicsFinderFunction
             
             foreach (var video in videos)
             {
+                currentUrl = video.Url;
                 var bytes = await downloader.DownloadLinkAsync(video.Url);
 
                 if (FileSplitterToZip.TrySplitFile(bytes, video.FileName, out var split))
@@ -285,6 +287,7 @@ public class ImoutoPicsFinderFunction
                 var downloadedImages = new List<(byte[] Content, string FileName)>();
                 foreach (var image in images)
                 {
+                    currentUrl = image.Url;
                     var bytes = await downloader.DownloadLinkAsync(image.Url);
                     downloadedImages.Add((bytes, image.FileName));
                 }
@@ -326,7 +329,7 @@ public class ImoutoPicsFinderFunction
         {
             await client.SendTextMessageAsync(
                 message.Chat.Id,
-                "Oops! Can't process your boosty post, please try again uwu 🍑" + "\n" + e.Message,
+                "Oops! Can't process your boosty post, please try again uwu 🍑" + "\n" + currentUrl + "\n" + e.Message,
                 replyToMessageId: message.MessageId);
         }
     }
