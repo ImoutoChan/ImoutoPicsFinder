@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Text.Json;
 using System.Threading.Tasks;
 using ImoutoPicsFinder.Boosty;
 using ImoutoPicsFinder.FileSplitter;
@@ -13,7 +14,6 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.Extensions;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
-using Newtonsoft.Json;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
@@ -37,7 +37,7 @@ public class ImoutoPicsFinderFunction
             _logger.LogInformation(request.GetDisplayUrl());
         
             var requestBody = await new StreamReader(request.Body).ReadToEndAsync();
-            var update = JsonConvert.DeserializeObject<Update>(requestBody);
+            var update = JsonSerializer.Deserialize<Update>(requestBody, JsonBotAPI.Options);
         
             var client = GetTelegramBotClient(_logger);
             await DownloadBoostyAsync(client, update.Message);
@@ -74,8 +74,8 @@ public class ImoutoPicsFinderFunction
 
         var requestBody = await new StreamReader(request.Body).ReadToEndAsync();
         _logger.LogInformation(requestBody);
-
-        var update = JsonConvert.DeserializeObject<Update>(requestBody);
+        
+        var update = JsonSerializer.Deserialize<Update>(requestBody, JsonBotAPI.Options);
 
         var task = ProcessUpdateAsync(update, client, requestBody);
         
@@ -86,7 +86,7 @@ public class ImoutoPicsFinderFunction
             {
                 try
                 {
-                    await client.SendTextMessageAsync(
+                    await client.SendMessage(
                         update.Message.Chat.Id,
                         "Took too much time, sorry, try again! uwu! 🍑");
                 }
@@ -109,10 +109,10 @@ public class ImoutoPicsFinderFunction
     {
         if (update.Message?.Text == "/start")
         {
-            await client.SendTextMessageAsync(
+            await client.SendMessage(
                 update.Message.Chat.Id,
                 "Send me a picture and I will try to find the source! uwu! 🍑",
-                replyToMessageId: update.Message.MessageId);
+                replyParameters: update.Message);
             return;
         }
         
@@ -175,10 +175,10 @@ public class ImoutoPicsFinderFunction
         catch (Exception e)
         {
             _logger.LogError(e, "PicsFinder function failed" + e.Message);
-            await client.SendTextMessageAsync(
+            await client.SendMessage(
                 update.Message!.Chat.Id,
                 "Oops! Can't process your picture, please try again uwu 🍑" + "\n" + e.Message,
-                replyToMessageId: update.Message.MessageId);
+                replyParameters: update.Message);
         }
     }
 
@@ -198,10 +198,10 @@ public class ImoutoPicsFinderFunction
 
             if (!result.IsSuccess)
             {
-                await client.SendTextMessageAsync(
+                await client.SendMessage(
                     message.Chat.Id,
                     "Oops! Can't process your insta post, please try again uwu 🍑" + "\n" + result.Error,
-                    replyToMessageId: message.MessageId);
+                    replyParameters: message);
                 return;
             }
 
@@ -209,10 +209,10 @@ public class ImoutoPicsFinderFunction
 
             if (!content.Any())
             {
-                await client.SendTextMessageAsync(
+                await client.SendMessage(
                     message.Chat.Id,
                     "Oops! Can't process your insta post, please try again uwu 🍑",
-                    replyToMessageId: message.MessageId);
+                    replyParameters: message);
                 return;
             }
 
@@ -220,7 +220,7 @@ public class ImoutoPicsFinderFunction
             {
                 if (mediaPhotoChunk.Length > 1)
                 {
-                    await client.SendMediaGroupAsync(
+                    await client.SendMediaGroup(
                         message.Chat.Id,
                         mediaPhotoChunk.Select(
                             x => x.Type switch
@@ -231,42 +231,42 @@ public class ImoutoPicsFinderFunction
                                     new InputFileStream(new MemoryStream(x.File), x.Name)),
                                 _ => throw new ArgumentOutOfRangeException()
                             }).ToList(),
-                        replyToMessageId: message.MessageId);
+                        replyParameters: message);
                 }
                 else
                 {
                     var item = mediaPhotoChunk.First();
                     if (item.Type == InstagramMediaType.Photo)
                     {
-                        await client.SendPhotoAsync(
+                        await client.SendPhoto(
                             message.Chat.Id,
                             new InputFileStream(new MemoryStream(item.File), item.Name),
-                            replyToMessageId: message.MessageId);
+                            replyParameters: message);
                     }
                     else
                     {
-                        await client.SendVideoAsync(
+                        await client.SendVideo(
                             message.Chat.Id,
                             new InputFileStream(new MemoryStream(item.File), item.Name),
-                            replyToMessageId: message.MessageId);
+                            replyParameters: message);
                     }
                 }
             }
 
             foreach (var item in content.Where(x => x.Type == InstagramMediaType.Photo))
             {
-                await client.SendDocumentAsync(
+                await client.SendDocument(
                     message.Chat.Id,
                     new InputFileStream(new MemoryStream(item.File), item.Name),
-                    replyToMessageId: message.MessageId);
+                    replyParameters: message);
             }
         }
         catch (Exception e)
         {
-            await client.SendTextMessageAsync(
+            await client.SendMessage(
                 message.Chat.Id,
                 "Oops! Can't process your insta post, please try again uwu 🍑" + "\n" + e.Message,
-                replyToMessageId: message.MessageId);
+                replyParameters: message);
         }
     }
     
@@ -282,10 +282,10 @@ public class ImoutoPicsFinderFunction
 
             if (!links.Any())
             {
-                await client.SendTextMessageAsync(
+                await client.SendMessage(
                     message.Chat.Id,
                     "Oops! Your boosty link is kinda empty and lonely, please try again uwu 🍑",
-                    replyToMessageId: message.MessageId);
+                    replyParameters: message);
                 return;
             }
 
@@ -301,18 +301,18 @@ public class ImoutoPicsFinderFunction
                 {
                     foreach (var (content, fileName) in split)
                     {
-                        await client.SendDocumentAsync(
+                        await client.SendDocument(
                             message.Chat.Id,
                             new InputFileStream(new MemoryStream(content), fileName),
-                            replyToMessageId: message.MessageId);
+                            replyParameters: message);
                     }
                 }
                 else
                 {
-                    await client.SendVideoAsync(
+                    await client.SendVideo(
                         message.Chat.Id,
                         new InputFileStream(new MemoryStream(bytes), video.FileName),
-                        replyToMessageId: message.MessageId);
+                        replyParameters: message);
                 }
             }
 
@@ -336,35 +336,35 @@ public class ImoutoPicsFinderFunction
                 {
                     if (mediaPhotoChunk.Length > 1)
                     {
-                        await client.SendMediaGroupAsync(
+                        await client.SendMediaGroup(
                             message.Chat.Id,
                             mediaPhotoChunk,
-                            replyToMessageId: message.MessageId);
+                            replyParameters: message);
                     }
                     else
                     {
-                        await client.SendPhotoAsync(
+                        await client.SendPhoto(
                             message.Chat.Id,
                             mediaPhotoChunk.First().Media,
-                            replyToMessageId: message.MessageId);
+                            replyParameters: message);
                     }
                 }
 
                 foreach (var image in downloadedImages)
                 {
-                    await client.SendDocumentAsync(
+                    await client.SendDocument(
                         message.Chat.Id,
                         new InputFileStream(new MemoryStream(image.Content), image.FileName),
-                        replyToMessageId: message.MessageId);
+                        replyParameters: message);
                 }
             }
         }
         catch (Exception e)
         {
-            await client.SendTextMessageAsync(
+            await client.SendMessage(
                 message.Chat.Id,
                 "Oops! Can't process your boosty post, please try again uwu 🍑" + "\n" + currentUrl + "\n" + e.Message,
-                replyToMessageId: message.MessageId);
+                replyParameters: message);
         }
     }
 
@@ -385,10 +385,10 @@ public class ImoutoPicsFinderFunction
 
             if (tikTokData == null || !tikTokData.VideoList.Any() && !tikTokData.ImageList.Any())
             {
-                await client.SendTextMessageAsync(
+                await client.SendMessage(
                     message.Chat.Id,
                     "Oops! Can't process your video, please try again uwu 🍑",
-                    replyToMessageId: message.MessageId);
+                    replyParameters: message);
                 return;
             }
 
@@ -403,10 +403,10 @@ public class ImoutoPicsFinderFunction
                 if (sentByteLength.Contains(ms.Length))
                     continue;
 
-                await client.SendVideoAsync(
+                await client.SendVideo(
                     message.Chat.Id,
                     new InputFileStream(ms, video.FileName),
-                    replyToMessageId: message.MessageId);
+                    replyParameters: message);
                 sentByteLength.Add(ms.Length);
             }
 
@@ -419,28 +419,28 @@ public class ImoutoPicsFinderFunction
                     images.Add((bytes, image.FileName));
                 }
 
-                await client.SendMediaGroupAsync(
+                await client.SendMediaGroup(
                     message.Chat.Id,
                     images
                         .Select(x => new InputMediaPhoto(new InputFileStream(new MemoryStream(x.Content), x.FileName)))
                         .ToList(),
-                    replyToMessageId: message.MessageId);
+                    replyParameters: message);
 
                 foreach (var image in images)
                 {
-                    await client.SendDocumentAsync(
+                    await client.SendDocument(
                         message.Chat.Id,
                         new InputFileStream(new MemoryStream(image.Content), image.FileName),
-                        replyToMessageId: message.MessageId);
+                        replyParameters: message);
                 }
             }
         }
         catch (Exception e)
         {
-            await client.SendTextMessageAsync(
+            await client.SendMessage(
                 message.Chat.Id,
                 "Oops! Can't process your video, please try again uwu 🍑" + "\n" + e.Message,
-                replyToMessageId: message.MessageId);
+                replyParameters: message);
         }
     }
 

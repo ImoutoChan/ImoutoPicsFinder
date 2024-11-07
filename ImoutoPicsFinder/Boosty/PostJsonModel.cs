@@ -1,31 +1,31 @@
 ﻿#nullable enable
 using System.Collections.Generic;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 // ReSharper disable once CheckNamespace
 namespace ImoutoPicsFinder.Boosty.PostJsonModel;
 
 public record PostJsonModel(
-    [property: JsonProperty("id")] string PostId,
-    [property: JsonProperty("data")] IReadOnlyList<Medium> Medium,
-    [property: JsonProperty("teaser")] IReadOnlyList<Medium> TeaserMedium,
-    [property: JsonProperty("user")] User Author
+    [property: JsonPropertyName("id")] string PostId,
+    [property: JsonPropertyName("data")] IReadOnlyList<Medium> Medium,
+    [property: JsonPropertyName("teaser")] IReadOnlyList<Medium> TeaserMedium,
+    [property: JsonPropertyName("user")] User Author
 );
 
 public record User(
-    [property: JsonProperty("id")] int? Id,
-    [property: JsonProperty("name")] string Name,
-    [property: JsonProperty("blogUrl")] string Url
+    [property: JsonPropertyName("id")] int? Id,
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("blogUrl")] string Url
 );
 
 public record Medium(
-    [property: JsonProperty("id")] string MediaId,
-    [property: JsonProperty("type")] string Type,
-    [property: JsonProperty("url")] string? Url,
-    [property: JsonProperty("playerUrls")] IReadOnlyList<PlayerUrl>? PlayerUrls
+    [property: JsonPropertyName("id")] string MediaId,
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("url")] string? Url,
+    [property: JsonPropertyName("playerUrls")] IReadOnlyList<PlayerUrl>? PlayerUrls
 );
 
 public record PlayerUrl(
-    [property: JsonProperty("type")] string Type,
-    [property: JsonProperty("url")] string Url
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("url")] string Url
 );

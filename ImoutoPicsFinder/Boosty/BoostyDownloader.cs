@@ -3,11 +3,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Web;
 using ImoutoPicsFinder.Boosty.DialogJsonModel;
-using Newtonsoft.Json;
 
 namespace ImoutoPicsFinder.Boosty;
 
@@ -44,7 +44,7 @@ public class BoostyDownloader
             
         // GET https://api.boosty.to/v1/dialog/{dialogId}
         var response = await httpClient.GetStringAsync($"https://api.boosty.to/v1/dialog/{messageInfo.DialogId}");
-        var model = JsonConvert.DeserializeObject<DialogJsonModel.DialogJsonModel>(response) 
+        var model = JsonSerializer.Deserialize<DialogJsonModel.DialogJsonModel>(response) 
                     ?? throw new InvalidOperationException("Failed to deserialize response");
 
         var selectedMessage = model.Messages.MessageList.FirstOrDefault(x => x.MessageId == messageInfo.MessageId);
@@ -58,7 +58,7 @@ public class BoostyDownloader
             response = await httpClient.GetStringAsync(
                 $"https://api.boosty.to/v1/dialog/{messageInfo.DialogId}/message/?limit=20&reverse=true&offset={min}");
             
-            var nextModel = JsonConvert.DeserializeObject<Messages>(response) 
+            var nextModel = JsonSerializer.Deserialize<Messages>(response) 
                             ?? throw new InvalidOperationException("Failed to deserialize response");
 
             selectedMessage = nextModel.MessageList.FirstOrDefault(x => x.MessageId == messageInfo.MessageId);
@@ -136,7 +136,7 @@ public class BoostyDownloader
             
         // GET https://api.boosty.to/v1/blog/{username}/post/{postId}
         var response = await httpClient.GetStringAsync($"https://api.boosty.to/v1/blog/{messageInfo.Username}/post/{messageInfo.PostId}");
-        var model = JsonConvert.DeserializeObject<PostJsonModel.PostJsonModel>(response) 
+        var model = JsonSerializer.Deserialize<PostJsonModel.PostJsonModel>(response) 
                     ?? throw new InvalidOperationException("Failed to deserialize response");
 
         var author = model.Author;

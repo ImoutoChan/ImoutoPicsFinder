@@ -26,8 +26,8 @@ public record BitRate(
     [property: JsonPropertyName("play_addr")] PlayAddr PlayAddr,
     [property: JsonPropertyName("is_bytevc1")] int? IsBytevc1,
     [property: JsonPropertyName("dub_infos")] object DubInfos,
-    [property: JsonPropertyName("HDR_type")] string HDRType,
-    [property: JsonPropertyName("HDR_bit")] string HDRBit
+    [property: JsonPropertyName("HDR_type")] string HdrType,
+    [property: JsonPropertyName("HDR_bit")] string HdrBit
 );
 
 public record DisplayImage(

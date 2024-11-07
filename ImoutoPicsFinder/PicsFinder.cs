@@ -32,18 +32,18 @@ public class PicsFinder
 
         var replyMessage = await GetReplyMessageAsync(fileId);
 
-        await _telegramBotClient.SendTextMessageAsync(
+        await _telegramBotClient.SendMessage(
             chatId: message.Chat.Id, 
             text: replyMessage, 
             parseMode: ParseMode.Html,
-            replyToMessageId: message.MessageId);
+            replyParameters: message.MessageId);
     }
 
     private async Task<string> GetReplyMessageAsync(string fileId)
     {
         using var ms = new MemoryStream();
 
-        await _telegramBotClient.GetInfoAndDownloadFileAsync(fileId, ms);
+        await _telegramBotClient.GetInfoAndDownloadFile(fileId, ms);
         ms.Seek(0, SeekOrigin.Begin);
 
         var results = await _iqdbClient.SearchFile(ms);

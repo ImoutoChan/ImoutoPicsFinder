@@ -1,39 +1,39 @@
 ﻿#nullable enable
 using System.Collections.Generic;
-using Newtonsoft.Json;
+using System.Text.Json.Serialization;
 
 // ReSharper disable once CheckNamespace
 namespace ImoutoPicsFinder.Boosty.DialogJsonModel;
 
 public record DialogJsonModel(
-    [property: JsonProperty("messages")] Messages Messages,
-    [property: JsonProperty("chatmate")] Chatmate Author
+    [property: JsonPropertyName("messages")] Messages Messages,
+    [property: JsonPropertyName("chatmate")] Chatmate Author
 );
 
 public record Chatmate(
-    [property: JsonProperty("id")] int? Id,
-    [property: JsonProperty("name")] string Name,
-    [property: JsonProperty("url")] string Url
+    [property: JsonPropertyName("id")] int? Id,
+    [property: JsonPropertyName("name")] string Name,
+    [property: JsonPropertyName("url")] string Url
 );
 
 public record Messages(
-    [property: JsonProperty("data")] IReadOnlyList<Message> MessageList
+    [property: JsonPropertyName("data")] IReadOnlyList<Message> MessageList
 );
 
 public record Message(
-    [property: JsonProperty("id")] int MessageId,
-    [property: JsonProperty("data")] IReadOnlyList<Medium> Medium,
-    [property: JsonProperty("teaser")] IReadOnlyList<Medium> TeaserMedium
+    [property: JsonPropertyName("id")] int MessageId,
+    [property: JsonPropertyName("data")] IReadOnlyList<Medium> Medium,
+    [property: JsonPropertyName("teaser")] IReadOnlyList<Medium> TeaserMedium
 );
 
 public record Medium(
-    [property: JsonProperty("id")] string MediaId,
-    [property: JsonProperty("type")] string Type,
-    [property: JsonProperty("url")] string? Url,
-    [property: JsonProperty("playerUrls")] IReadOnlyList<PlayerUrl>? PlayerUrls
+    [property: JsonPropertyName("id")] string MediaId,
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("url")] string? Url,
+    [property: JsonPropertyName("playerUrls")] IReadOnlyList<PlayerUrl>? PlayerUrls
 );
 
 public record PlayerUrl(
-    [property: JsonProperty("type")] string Type,
-    [property: JsonProperty("url")] string Url
+    [property: JsonPropertyName("type")] string Type,
+    [property: JsonPropertyName("url")] string Url
 );
