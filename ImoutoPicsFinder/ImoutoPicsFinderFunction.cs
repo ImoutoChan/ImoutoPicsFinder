@@ -216,37 +216,40 @@ public class ImoutoPicsFinderFunction
                 return;
             }
 
-            if (content.Count > 1)
+            foreach (var mediaPhotoChunk in content.Chunk(10))
             {
-                await client.SendMediaGroupAsync(
-                    message.Chat.Id,
-                    content.Select(
-                        x => x.Type switch
-                        {
-                            InstagramMediaType.Video => new InputMediaVideo(
-                                new InputFileStream(new MemoryStream(x.File), x.Name)) as IAlbumInputMedia,
-                            InstagramMediaType.Photo => new InputMediaPhoto(
-                                new InputFileStream(new MemoryStream(x.File), x.Name)),
-                            _ => throw new ArgumentOutOfRangeException()
-                        }).ToList(),
-                    replyToMessageId: message.MessageId);
-            }
-            else
-            {
-                var item = content.First();
-                if (item.Type == InstagramMediaType.Photo)
+                if (mediaPhotoChunk.Length > 1)
                 {
-                    await client.SendPhotoAsync(
+                    await client.SendMediaGroupAsync(
                         message.Chat.Id,
-                        new InputFileStream(new MemoryStream(item.File), item.Name),
+                        mediaPhotoChunk.Select(
+                            x => x.Type switch
+                            {
+                                InstagramMediaType.Video => new InputMediaVideo(
+                                    new InputFileStream(new MemoryStream(x.File), x.Name)) as IAlbumInputMedia,
+                                InstagramMediaType.Photo => new InputMediaPhoto(
+                                    new InputFileStream(new MemoryStream(x.File), x.Name)),
+                                _ => throw new ArgumentOutOfRangeException()
+                            }).ToList(),
                         replyToMessageId: message.MessageId);
                 }
                 else
                 {
-                    await client.SendVideoAsync(
-                        message.Chat.Id,
-                        new InputFileStream(new MemoryStream(item.File), item.Name),
-                        replyToMessageId: message.MessageId);
+                    var item = mediaPhotoChunk.First();
+                    if (item.Type == InstagramMediaType.Photo)
+                    {
+                        await client.SendPhotoAsync(
+                            message.Chat.Id,
+                            new InputFileStream(new MemoryStream(item.File), item.Name),
+                            replyToMessageId: message.MessageId);
+                    }
+                    else
+                    {
+                        await client.SendVideoAsync(
+                            message.Chat.Id,
+                            new InputFileStream(new MemoryStream(item.File), item.Name),
+                            replyToMessageId: message.MessageId);
+                    }
                 }
             }
 
