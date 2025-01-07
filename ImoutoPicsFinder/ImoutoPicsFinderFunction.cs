@@ -402,12 +402,13 @@ public class ImoutoPicsFinderFunction
 
                 if (sentByteLength.Contains(ms.Length))
                     continue;
+                
+                sentByteLength.Add(ms.Length);
 
                 await client.SendVideo(
                     message.Chat.Id,
                     new InputFileStream(ms, video.FileName),
                     replyParameters: message);
-                sentByteLength.Add(ms.Length);
             }
 
             if (tikTokData.ImageList.Any())

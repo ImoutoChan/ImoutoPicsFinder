@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <TargetFramework>net8.0</TargetFramework>
@@ -19,7 +19,7 @@
 
         <PackageReference Include="Telegram.Bot" Version="22.0.2" />
         <PackageReference Include="IqdbApi" Version="2.3.0" />
-        <PackageReference Include="DotNetZip" Version="1.16.0" />
+        <PackageReference Include="DotNetZip" Version="1.16.0" NoWarn="NU1903" />
     </ItemGroup>
 
     <ItemGroup>
