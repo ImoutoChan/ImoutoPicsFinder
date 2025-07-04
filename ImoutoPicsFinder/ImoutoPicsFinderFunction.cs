@@ -88,7 +88,7 @@ public class ImoutoPicsFinderFunction
                 {
                     await client.SendMessage(
                         update.Message.Chat.Id,
-                        "Took too much time, sorry, try again! uwu! 🍑");
+                        "Took too much time, sorry, wait a little bit more! uwu! 🍑");
                 }
                 catch
                 {
@@ -169,7 +169,9 @@ public class ImoutoPicsFinderFunction
 
         try
         {
-            var picsFinder = new PicsFinder(client, new IqdbClient());
+            var iqdb = new IqdbClient();
+            iqdb.ConfigureHttpClient(x => x.Timeout = TimeSpan.FromSeconds(1000));
+            var picsFinder = new PicsFinder(client, iqdb);
             await picsFinder.ProcessPhotoPostAsync(update.Message!);
         }
         catch (Exception e)
@@ -368,7 +370,7 @@ public class ImoutoPicsFinderFunction
         }
     }
 
-    private static async Task DownloadTikTokAsync(ITelegramBotClient client, Message message, string id = null)
+    private static async Task DownloadTikTokAsync(ITelegramBotClient client, Message message, string id = null, int retry = 0)
     {
         try
         {
@@ -438,10 +440,17 @@ public class ImoutoPicsFinderFunction
         }
         catch (Exception e)
         {
-            await client.SendMessage(
-                message.Chat.Id,
-                "Oops! Can't process your video, please try again uwu 🍑" + "\n" + e.Message,
-                replyParameters: message);
+            if (retry < 3)
+            {
+                await DownloadTikTokAsync(client, message, id, retry + 1);
+            }
+            else
+            {
+                await client.SendMessage(
+                    message.Chat.Id,
+                    "Oops! Can't process your video, please try again uwu 🍑" + "\n" + e.Message,
+                    replyParameters: message);
+            }
         }
     }
 
