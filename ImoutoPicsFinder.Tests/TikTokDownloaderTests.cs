@@ -16,6 +16,7 @@ public class TikTokDownloaderTests
         bytes.Should().NotBeNull();
         bytes.Length.Should().Be(2304588);
     }
+
     [Fact]
     public async Task TikTokDownloaderShouldDownloadImagesFromLink()
     {
@@ -29,6 +30,21 @@ public class TikTokDownloaderTests
 
         bytes.Should().NotBeNull();
         bytes.Length.Should().Be(146594);
+    }
+
+    [Fact]
+    public async Task TikTokDownloaderShouldDownloadImagesFromLinkZSSSSHPoy()
+    {
+        var downloader = new TikTokDownloader();
+        var tiktok = await downloader.GetContentFromTikTokAsync("https://vt.tiktok.com/ZSSSSHPoy");
+
+        tiktok?.VideoList.Should().NotBeNull();
+        tiktok!.VideoList.Should().HaveCount(2);
+
+        var bytes = await new HttpClient().GetByteArrayAsync(tiktok.VideoList.First().Url);
+
+        bytes.Should().NotBeNull();
+        bytes.Length.Should().Be(2819959);
     }
 
     [Fact]

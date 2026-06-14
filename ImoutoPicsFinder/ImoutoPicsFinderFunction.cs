@@ -227,8 +227,7 @@ public class ImoutoPicsFinderFunction
                         mediaPhotoChunk.Select(
                             x => x.Type switch
                             {
-                                InstagramMediaType.Video => new InputMediaVideo(
-                                    new InputFileStream(new MemoryStream(x.File), x.Name)) as IAlbumInputMedia,
+                                InstagramMediaType.Video => CreateInputMediaVideo(x) as IAlbumInputMedia,
                                 InstagramMediaType.Photo => new InputMediaPhoto(
                                     new InputFileStream(new MemoryStream(x.File), x.Name)),
                                 _ => throw new ArgumentOutOfRangeException()
@@ -250,6 +249,8 @@ public class ImoutoPicsFinderFunction
                         await client.SendVideo(
                             message.Chat.Id,
                             new InputFileStream(new MemoryStream(item.File), item.Name),
+                            width: item.Width,
+                            height: item.Height,
                             replyParameters: message);
                     }
                 }
@@ -271,7 +272,22 @@ public class ImoutoPicsFinderFunction
                 replyParameters: message);
         }
     }
-    
+
+    private static InputMediaVideo CreateInputMediaVideo(InstagramMedia media)
+    {
+        var video = new InputMediaVideo(new InputFileStream(new MemoryStream(media.File), media.Name));
+
+        // Telegram renders videos as squares unless it's told the real dimensions,
+        // so pass them through when Instagram gave them to us.
+        if (media.Width is > 0 && media.Height is > 0)
+        {
+            video.Width = media.Width.Value;
+            video.Height = media.Height.Value;
+        }
+
+        return video;
+    }
+
     private static async Task DownloadBoostyAsync(ITelegramBotClient client, Message message)
     {
         var currentUrl = string.Empty;

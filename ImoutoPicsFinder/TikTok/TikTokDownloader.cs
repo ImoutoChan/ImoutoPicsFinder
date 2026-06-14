@@ -33,6 +33,7 @@ public class TikTokDownloader
                 tiktokId = match.Groups[1].Value;
         }
 
+        Exception? exception = null;
         if (tiktokId == null)
         {
             try
@@ -44,9 +45,9 @@ public class TikTokDownloader
                 if (match.Groups.Count > 1)
                     tiktokId = match.Groups[1].Value;
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // ignored
+                exception = ex;
             }
         }
 
@@ -60,9 +61,9 @@ public class TikTokDownloader
                 if (splitContent.Length > 1)
                     tiktokId = splitContent[1].Split(new[] { "\"" }, 2, StringSplitOptions.RemoveEmptyEntries)[0];
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                // ignored
+                exception = ex;
             }
         }
 
@@ -70,6 +71,9 @@ public class TikTokDownloader
         {
             return await GetFromTikTokIdAsync(tiktokId);
         }
+
+        if (exception != null)
+            throw exception;
 
         return null;
     }
@@ -95,7 +99,7 @@ public class TikTokDownloader
         }
         catch (Exception)
         {
-            // ignored
+            throw;
         }
 
         if (string.IsNullOrWhiteSpace(json))
@@ -108,7 +112,7 @@ public class TikTokDownloader
         }
         catch (Exception)
         {
-            return null;
+            throw new Exception(json.Substring(0, Math.Min(json.Length, 200)));
         }
 
         var targetAweme = jsonResponse.AwemeList[0];

@@ -7,7 +7,9 @@ public record PaidInstagramStory(
     [property: JsonPropertyName("thumbnail_url")] string ThumbnailUrl,
     [property: JsonPropertyName("video_url")] string VideoUrl,
     [property: JsonPropertyName("user")] User User,
-    [property: JsonPropertyName("taken_at")] object TakenAt
+    [property: JsonPropertyName("taken_at")] object TakenAt,
+    [property: JsonPropertyName("original_width")] int? OriginalWidth = null,
+    [property: JsonPropertyName("original_height")] int? OriginalHeight = null
 );
 
 public record User(

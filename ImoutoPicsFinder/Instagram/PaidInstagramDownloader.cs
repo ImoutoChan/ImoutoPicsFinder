@@ -62,9 +62,11 @@ public class PaidInstagramDownloader
                     url,
                     new List<InstagramMedia>
                         { new(
-                            videoBytes, 
-                            GetFileName(instagramPost.VideoUrl, instagramPost.User, instagramPost.TakenAt), 
-                            InstagramMediaType.Video) },
+                            videoBytes,
+                            GetFileName(instagramPost.VideoUrl, instagramPost.User, instagramPost.TakenAt),
+                            InstagramMediaType.Video,
+                            instagramPost.OriginalWidth,
+                            instagramPost.OriginalHeight) },
                     ""),
                 true, null);
         }
@@ -128,7 +130,8 @@ public class PaidInstagramDownloader
                     var maxVideo = media.VideoVersions.MaxBy(x => x.Width);
                     var videoBytes = await client.GetByteArrayAsync(maxVideo.Url);
                     files.Add(
-                        new(videoBytes, GetFileName(maxVideo.Url, item.User, item.TakenAt, i), InstagramMediaType.Video));
+                        new(videoBytes, GetFileName(maxVideo.Url, item.User, item.TakenAt, i), InstagramMediaType.Video,
+                            maxVideo.Width, maxVideo.Height));
                 }
                 else
                 {
@@ -145,7 +148,7 @@ public class PaidInstagramDownloader
             return new Result<InstagramPost>(
                 new InstagramPost(
                     url,
-                    new List<InstagramMedia> { new (videoBytes, GetFileName(maxVideo.Url, item.User, item.TakenAt), InstagramMediaType.Video) }, 
+                    new List<InstagramMedia> { new (videoBytes, GetFileName(maxVideo.Url, item.User, item.TakenAt), InstagramMediaType.Video, maxVideo.Width, maxVideo.Height) },
                     caption),
                 true, null);
         }
@@ -198,7 +201,7 @@ public record Result<T>(T Value, bool IsSuccess, string Error);
 
 public record InstagramPost(string Url, IReadOnlyCollection<InstagramMedia> Files, string Caption);
 
-public record InstagramMedia(byte[] File, string Name, InstagramMediaType Type);
+public record InstagramMedia(byte[] File, string Name, InstagramMediaType Type, int? Width = null, int? Height = null);
 
 public enum InstagramMediaType
 {
