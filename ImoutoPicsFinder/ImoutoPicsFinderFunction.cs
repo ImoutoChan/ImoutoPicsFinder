@@ -456,8 +456,9 @@ public class ImoutoPicsFinderFunction
         }
         catch (Exception e)
         {
-            if (retry < 3)
+            if (retry < 6)
             {
+                await Task.Delay(TimeSpan.FromSeconds(Math.Min(2 * (retry + 1), 10)));
                 await DownloadTikTokAsync(client, message, id, retry + 1);
             }
             else
