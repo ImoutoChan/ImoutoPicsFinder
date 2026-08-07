@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Text.Json;
 using System.Threading.Tasks;
 using ImoutoPicsFinder.Boosty;
+using ImoutoPicsFinder.Danbooru;
 using ImoutoPicsFinder.FileSplitter;
 using ImoutoPicsFinder.Instagram;
 using ImoutoPicsFinder.TikTok;
@@ -171,7 +172,7 @@ public class ImoutoPicsFinderFunction
         {
             var iqdb = new IqdbClient();
             iqdb.ConfigureHttpClient(x => x.Timeout = TimeSpan.FromSeconds(1000));
-            var picsFinder = new PicsFinder(client, iqdb);
+            var picsFinder = new PicsFinder(client, iqdb, DanbooruIqdbClient.CreateFromEnvironment());
             await picsFinder.ProcessPhotoPostAsync(update.Message!);
         }
         catch (Exception e)

@@ -1,7 +1,11 @@
-﻿using System.IO;
+﻿using System;
+using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using ImoutoPicsFinder.Danbooru;
 using IqdbApi;
 using IqdbApi.Enums;
 using IqdbApi.Models;
@@ -14,13 +18,20 @@ namespace ImoutoPicsFinder;
 
 public class PicsFinder
 {
+    private const string NotFoundMessage = "🍰 similar images weren't found 😥";
+
     private readonly ITelegramBotClient _telegramBotClient;
     private readonly IIqdbClient _iqdbClient;
+    private readonly DanbooruIqdbClient _danbooruIqdbClient;
 
-    public PicsFinder(ITelegramBotClient telegramBotClient, IIqdbClient iqdbClient)
+    public PicsFinder(
+        ITelegramBotClient telegramBotClient,
+        IIqdbClient iqdbClient,
+        DanbooruIqdbClient danbooruIqdbClient)
     {
         _telegramBotClient = telegramBotClient;
         _iqdbClient = iqdbClient;
+        _danbooruIqdbClient = danbooruIqdbClient;
     }
 
     public async Task ProcessPhotoPostAsync(Message message)
@@ -44,22 +55,59 @@ public class PicsFinder
         using var ms = new MemoryStream();
 
         await _telegramBotClient.GetInfoAndDownloadFile(fileId, ms);
-        ms.Seek(0, SeekOrigin.Begin);
 
-        var results = await _iqdbClient.SearchFile(ms);
+        // every search gets its own stream over the same bytes, the clients close what they're given
+        var image = ms.ToArray();
 
-        return BuildSearchResultMessage(results);
+        Exception iqdbFailure = null;
+        try
+        {
+            var results = await _iqdbClient.SearchFile(new MemoryStream(image));
+
+            if (results.IsFound)
+            {
+                // iqdb reports a hit even when every match is too weak to be shown
+                var iqdbMessage = BuildSearchResultMessage(results);
+
+                if (!string.IsNullOrWhiteSpace(iqdbMessage))
+                    return iqdbMessage;
+            }
+        }
+        catch (Exception e)
+        {
+            iqdbFailure = e;
+        }
+
+        // iqdb.org is either down or knows nothing about the picture, so ask danbooru's own iqdb
+        if (_danbooruIqdbClient == null)
+        {
+            if (iqdbFailure != null)
+                throw new Exception("iqdb: " + iqdbFailure.Message, iqdbFailure);
+
+            return NotFoundMessage;
+        }
+
+        try
+        {
+            var danbooruMatches = await _danbooruIqdbClient.SearchFileAsync(new MemoryStream(image));
+
+            return danbooruMatches.Any()
+                ? BuildDanbooruSearchResultMessage(danbooruMatches)
+                : NotFoundMessage;
+        }
+        catch (Exception e)
+        {
+            if (iqdbFailure != null)
+                throw new Exception($"iqdb: {iqdbFailure.Message}, danbooru: {e.Message}", iqdbFailure);
+
+            // iqdb worked and simply found nothing, danbooru was a bonus attempt, so don't fail over it
+            return NotFoundMessage + "\n(danbooru search failed: " + e.Message + ")";
+        }
     }
 
     private static string BuildSearchResultMessage(SearchResult searchResults)
     {
         var sb = new StringBuilder();
-
-        if (!searchResults.IsFound)
-        {
-            sb.AppendLine("🍰 similar images weren't found 😥");
-            return sb.ToString();
-        }
 
         searchResults
             .Matches
@@ -71,6 +119,21 @@ public class PicsFinder
             .ForEach(x =>
                 sb.AppendLine(
                     $"({x.Similarity} 🍑 {x.Resolution.Width}x{x.Resolution.Height} 🍒 {x.Url.Trim('/', '\\')}"));
+
+        return sb.ToString();
+    }
+
+    private static string BuildDanbooruSearchResultMessage(IReadOnlyCollection<DanbooruIqdbMatch> matches)
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("🍥 nothing on iqdb, but danbooru knows:");
+
+        foreach (var match in matches)
+        {
+            var score = match.Score.ToString("F1", CultureInfo.InvariantCulture);
+            sb.AppendLine(
+                $"({score} 🍑 {match.Post.Width}x{match.Post.Height} 🍒 danbooru.donmai.us/posts/{match.Post.Id}");
+        }
 
         return sb.ToString();
     }
