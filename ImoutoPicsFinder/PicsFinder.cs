@@ -22,12 +22,12 @@ public class PicsFinder
 
     private readonly ITelegramBotClient _telegramBotClient;
     private readonly IIqdbClient _iqdbClient;
-    private readonly DanbooruIqdbClient _danbooruIqdbClient;
+    private readonly IDanbooruIqdbClient _danbooruIqdbClient;
 
     public PicsFinder(
         ITelegramBotClient telegramBotClient,
         IIqdbClient iqdbClient,
-        DanbooruIqdbClient danbooruIqdbClient)
+        IDanbooruIqdbClient danbooruIqdbClient)
     {
         _telegramBotClient = telegramBotClient;
         _iqdbClient = iqdbClient;
@@ -59,27 +59,36 @@ public class PicsFinder
         // every search gets its own stream over the same bytes, the clients close what they're given
         var image = ms.ToArray();
 
-        Exception iqdbFailure = null;
-        try
+        var iqdbTask = TrySearchAsync(image, async stream =>
         {
-            var results = await _iqdbClient.SearchFile(new MemoryStream(image));
-
-            if (results.IsFound)
+            var results = await _iqdbClient.SearchFile(stream);
+            // iqdb reports a hit even when every match is too weak to be shown
+            return results.IsFound ? BuildSearchResultMessage(results) : null;
+        });
+        var danbooruTask = _danbooruIqdbClient == null
+            ? null
+            : TrySearchAsync(image, async stream =>
             {
-                // iqdb reports a hit even when every match is too weak to be shown
-                var iqdbMessage = BuildSearchResultMessage(results);
+                var matches = await _danbooruIqdbClient.SearchFileAsync(stream);
+                return matches.Any() ? BuildDanbooruSearchResultMessage(matches) : null;
+            });
 
-                if (!string.IsNullOrWhiteSpace(iqdbMessage))
-                    return iqdbMessage;
-            }
-        }
-        catch (Exception e)
+        if (danbooruTask != null)
         {
-            iqdbFailure = e;
+            var firstCompleted = await Task.WhenAny(iqdbTask, danbooruTask);
+            var (firstMessage, _) = await firstCompleted;
+
+            // The other search owns its stream and catches failures even after we return.
+            if (!string.IsNullOrWhiteSpace(firstMessage))
+                return firstMessage;
         }
 
-        // iqdb.org is either down or knows nothing about the picture, so ask danbooru's own iqdb
-        if (_danbooruIqdbClient == null)
+        var (iqdbMessage, iqdbFailure) = await iqdbTask;
+
+        if (!string.IsNullOrWhiteSpace(iqdbMessage))
+            return iqdbMessage;
+
+        if (danbooruTask == null)
         {
             if (iqdbFailure != null)
                 throw new Exception("iqdb: " + iqdbFailure.Message, iqdbFailure);
@@ -87,21 +96,29 @@ public class PicsFinder
             return NotFoundMessage;
         }
 
+        var (danbooruMessage, danbooruFailure) = await danbooruTask;
+
+        if (danbooruFailure == null)
+            return danbooruMessage ?? NotFoundMessage;
+
+        if (iqdbFailure != null)
+            throw new Exception($"iqdb: {iqdbFailure.Message}, danbooru: {danbooruFailure.Message}", iqdbFailure);
+
+        // iqdb worked and simply found nothing, danbooru was a bonus attempt, so don't fail over it
+        return NotFoundMessage + "\n(danbooru search failed: " + danbooruFailure.Message + ")";
+    }
+
+    private static async Task<(string Message, Exception Failure)> TrySearchAsync(
+        byte[] image, Func<Stream, Task<string>> search)
+    {
         try
         {
-            var danbooruMatches = await _danbooruIqdbClient.SearchFileAsync(new MemoryStream(image));
-
-            return danbooruMatches.Any()
-                ? BuildDanbooruSearchResultMessage(danbooruMatches)
-                : NotFoundMessage;
+            using var stream = new MemoryStream(image);
+            return (await search(stream), null);
         }
         catch (Exception e)
         {
-            if (iqdbFailure != null)
-                throw new Exception($"iqdb: {iqdbFailure.Message}, danbooru: {e.Message}", iqdbFailure);
-
-            // iqdb worked and simply found nothing, danbooru was a bonus attempt, so don't fail over it
-            return NotFoundMessage + "\n(danbooru search failed: " + e.Message + ")";
+            return (null, e);
         }
     }
 
@@ -126,7 +143,7 @@ public class PicsFinder
     private static string BuildDanbooruSearchResultMessage(IReadOnlyCollection<DanbooruIqdbMatch> matches)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("🍥 nothing on iqdb, but danbooru knows:");
+        sb.AppendLine("🍥 danbooru knows:");
 
         foreach (var match in matches)
         {

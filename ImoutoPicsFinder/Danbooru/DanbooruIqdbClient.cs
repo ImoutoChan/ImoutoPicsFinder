@@ -14,7 +14,7 @@ namespace ImoutoPicsFinder.Danbooru;
 /// Reverse image search against danbooru's own iqdb instance: https://danbooru.donmai.us/iqdb_queries
 /// It only knows about danbooru posts, but its index is fresher than the public iqdb.org one.
 /// </summary>
-public class DanbooruIqdbClient
+public class DanbooruIqdbClient : IDanbooruIqdbClient
 {
     private const string SearchUrl = "https://danbooru.donmai.us/iqdb_queries.json";
 

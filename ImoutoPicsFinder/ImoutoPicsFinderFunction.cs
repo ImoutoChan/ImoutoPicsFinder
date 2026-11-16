@@ -24,8 +24,15 @@ namespace ImoutoPicsFinder;
 public class ImoutoPicsFinderFunction
 {
     private readonly ILogger<ImoutoPicsFinderFunction> _logger;
+    private readonly TelegramAccessPolicy _accessPolicy;
 
-    public ImoutoPicsFinderFunction(ILogger<ImoutoPicsFinderFunction> logger) => _logger = logger;
+    public ImoutoPicsFinderFunction(
+        ILogger<ImoutoPicsFinderFunction> logger,
+        TelegramAccessPolicy accessPolicy)
+    {
+        _logger = logger;
+        _accessPolicy = accessPolicy;
+    }
 
     [Function("ImoutoPicsBoostyFinder")]
     public async Task ProcessBoosty(
@@ -34,11 +41,14 @@ public class ImoutoPicsFinderFunction
     {
         try
         {
-            _logger.LogInformation("PicsFinder boosty function triggered");
-            _logger.LogInformation(request.GetDisplayUrl());
-        
             var requestBody = await new StreamReader(request.Body).ReadToEndAsync();
             var update = JsonSerializer.Deserialize<Update>(requestBody, JsonBotAPI.Options);
+
+            if (!_accessPolicy.IsAllowed(update?.Message))
+                return;
+
+            _logger.LogInformation("PicsFinder boosty function triggered");
+            _logger.LogInformation(request.GetDisplayUrl());
         
             var client = GetTelegramBotClient(_logger);
             await DownloadBoostyAsync(client, update.Message);
@@ -68,15 +78,17 @@ public class ImoutoPicsFinderFunction
 
     private async Task ProcessTelegramUpdate(HttpRequest request)
     {
+        var requestBody = await new StreamReader(request.Body).ReadToEndAsync();
+        var update = JsonSerializer.Deserialize<Update>(requestBody, JsonBotAPI.Options);
+
+        if (!_accessPolicy.IsAllowed(update?.Message))
+            return;
+
         _logger.LogInformation("PicsFinder function triggered");
         _logger.LogInformation(request.GetDisplayUrl());
+        _logger.LogInformation(requestBody);
 
         var client = GetTelegramBotClient(_logger);
-
-        var requestBody = await new StreamReader(request.Body).ReadToEndAsync();
-        _logger.LogInformation(requestBody);
-        
-        var update = JsonSerializer.Deserialize<Update>(requestBody, JsonBotAPI.Options);
 
         var task = ProcessUpdateAsync(update, client, requestBody);
         
